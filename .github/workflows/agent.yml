@@ -1,0 +1,82 @@
+name: agent
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: go vet
+        run: go vet ./...
+      - name: gofmt
+        run: test -z "$(gofmt -l .)"
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.14.0
+      - name: go test
+        run: go test ./... -race
+      - uses: azure/setup-helm@v5
+        with:
+          version: v3.16.2
+      - name: helm lint
+        run: helm lint charts/cronbeat-agent --set clusterName=ci --set apiKey=cb_agent_ci
+      - name: helm template
+        run: |
+          helm template ci charts/cronbeat-agent --set clusterName=ci --set apiKey=cb_agent_ci > /dev/null
+          helm template ci charts/cronbeat-agent --set clusterName=ci --set existingSecret=s --set 'watchNamespaces={a,b}' > /dev/null
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      REGISTRY: ghcr.io
+    steps:
+      - uses: actions/checkout@v7
+      - name: Compute names and version
+        id: meta
+        run: |
+          owner="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+          echo "owner=${owner}" >> "$GITHUB_OUTPUT"
+          echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: VERSION=${{ steps.meta.outputs.version }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ steps.meta.outputs.owner }}/cronbeat-agent:${{ steps.meta.outputs.version }}
+            ${{ env.REGISTRY }}/${{ steps.meta.outputs.owner }}/cronbeat-agent:latest
+      - uses: azure/setup-helm@v5
+        with:
+          version: v3.16.2
+      - name: Package and push chart
+        run: |
+          helm registry login "${REGISTRY}" -u "${{ github.actor }}" --password-stdin <<< "${{ secrets.GITHUB_TOKEN }}"
+          helm package charts/cronbeat-agent \
+            --version "${{ steps.meta.outputs.version }}" \
+            --app-version "${{ steps.meta.outputs.version }}"
+          helm push "cronbeat-agent-${{ steps.meta.outputs.version }}.tgz" \
+            "oci://${REGISTRY}/${{ steps.meta.outputs.owner }}/charts"

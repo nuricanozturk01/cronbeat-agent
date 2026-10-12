@@ -1,0 +1,13 @@
+# Read-only. No secrets, no pod logs, no write verbs. The informers only need
+# list and watch. With watchNamespaces set the access is limited to those
+# namespaces (see role.yaml) and no cluster-wide permission is created.
+{{- if not .Values.watchNamespaces }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "cronbeat-agent.fullname" . }}
+  labels:
+    {{- include "cronbeat-agent.labels" . | nindent 4 }}
+rules:
+  {{- include "cronbeat-agent.rules" . | nindent 2 }}
+{{- end }}

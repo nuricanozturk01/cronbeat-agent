@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["clusterName"],
+  "properties": {
+    "clusterName": { "type": "string", "minLength": 1 },
+    "apiKey": { "type": "string" },
+    "existingSecret": { "type": "string" },
+    "existingSecretKey": { "type": "string", "minLength": 1 },
+    "apiUrl": { "type": "string", "pattern": "^https?://" },
+    "watchNamespaces": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "healthPort": { "type": "integer", "minimum": 1, "maximum": 65535 },
+    "goMemLimit": { "type": "string", "pattern": "^[0-9]+(B|KiB|MiB|GiB)$" },
+    "logLevel": { "type": "string", "enum": ["debug", "info", "warn", "error"] },
+    "image": {
+      "type": "object",
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "tag": { "type": "string" },
+        "pullPolicy": { "type": "string", "enum": ["Always", "IfNotPresent", "Never"] }
+      }
+    },
+    "imagePullSecrets": { "type": "array" },
+    "resources": { "type": "object" },
+    "podAnnotations": { "type": "object" },
+    "podLabels": { "type": "object" },
+    "nodeSelector": { "type": "object" },
+    "tolerations": { "type": "array" },
+    "affinity": { "type": "object" }
+  },
+  "anyOf": [
+    { "required": ["apiKey"], "properties": { "apiKey": { "type": "string", "minLength": 1 } } },
+    { "required": ["existingSecret"], "properties": { "existingSecret": { "type": "string", "minLength": 1 } } }
+  ]
+}

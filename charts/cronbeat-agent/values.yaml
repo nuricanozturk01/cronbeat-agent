@@ -1,0 +1,59 @@
+# Cluster name shown in CronBeat (required).
+clusterName: ""
+
+# Agent API key (cb_agent_...). Written to a Secret created by this chart.
+# Either set apiKey or existingSecret.
+apiKey: ""
+
+# Use a Secret you manage yourself instead of apiKey. It must contain the key
+# named by existingSecretKey.
+existingSecret: ""
+existingSecretKey: api-key
+
+# CronBeat API base URL.
+apiUrl: https://api.cronbeat.dev
+
+# Namespaces to watch. Empty means all namespaces.
+watchNamespaces: []
+
+# debug, info, warn, error
+logLevel: info
+
+# Port of the /healthz and /readyz probes (cluster internal, no Service).
+healthPort: 8081
+
+# Soft memory limit of the Go runtime, keep it about 20% below resources.limits.memory
+# so the garbage collector works harder before the container is OOM killed.
+goMemLimit: 200MiB
+
+image:
+  repository: repo.repsy.io/nuricanozturk/cronbeat-agent-bin/agent
+  # Defaults to the chart appVersion.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  # Defaults to the release fullname.
+  name: ""
+  annotations: {}
+
+resources:
+  requests:
+    cpu: 20m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+podAnnotations: {}
+podLabels: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

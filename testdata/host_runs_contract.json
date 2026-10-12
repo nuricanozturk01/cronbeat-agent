@@ -1,0 +1,67 @@
+{
+  "_comment": "Exact request bodies of POST /agent/v1/host/runs sent by the cronbeat host CLI. The values are fixed examples; the field names, types and omissions are the contract. The backend tests mirror this file.",
+  "started": {
+    "agentVersion": "0.1.0",
+    "job": {
+      "name": "nightly-backup",
+      "schedule": "0 2 * * *",
+      "timeZone": "Europe/Istanbul",
+      "graceSeconds": 300,
+      "maxRuntimeSeconds": 3600
+    },
+    "run": {
+      "id": "3f2b8c1e-5a4d-4e6f-8b7a-1c2d3e4f5a6b",
+      "type": "started"
+    }
+  },
+  "succeeded": {
+    "agentVersion": "0.1.0",
+    "job": {
+      "name": "nightly-backup",
+      "schedule": "0 2 * * *",
+      "timeZone": "Europe/Istanbul",
+      "graceSeconds": 300,
+      "maxRuntimeSeconds": 3600
+    },
+    "run": {
+      "id": "3f2b8c1e-5a4d-4e6f-8b7a-1c2d3e4f5a6b",
+      "type": "succeeded",
+      "durationMs": 1234,
+      "exitCode": 0
+    }
+  },
+  "failed": {
+    "agentVersion": "0.1.0",
+    "job": {
+      "name": "nightly-backup",
+      "schedule": "0 2 * * *",
+      "timeZone": "Europe/Istanbul",
+      "graceSeconds": 300,
+      "maxRuntimeSeconds": 3600
+    },
+    "run": {
+      "id": "3f2b8c1e-5a4d-4e6f-8b7a-1c2d3e4f5a6b",
+      "type": "failed",
+      "durationMs": 1234,
+      "exitCode": 2,
+      "output": "backup failed: disk full\n"
+    }
+  },
+  "failed_by_signal": {
+    "agentVersion": "0.1.0",
+    "job": {
+      "name": "nightly-backup",
+      "schedule": "0 2 * * *",
+      "timeZone": "Europe/Istanbul",
+      "graceSeconds": 300,
+      "maxRuntimeSeconds": 3600
+    },
+    "run": {
+      "id": "3f2b8c1e-5a4d-4e6f-8b7a-1c2d3e4f5a6b",
+      "type": "failed",
+      "durationMs": 1234,
+      "exitCode": 137,
+      "signal": "SIGKILL"
+    }
+  }
+}

@@ -1,0 +1,92 @@
+name: host-agent
+
+on:
+  pull_request:
+    paths:
+      - "cmd/cronbeat/**"
+      - "internal/hostcli/**"
+      - "internal/hostversion/**"
+      - "scripts/**"
+      - "testdata/**"
+      - "go.mod"
+      - "go.sum"
+      - ".golangci.yml"
+      - ".github/workflows/host-agent.yml"
+  push:
+    branches: [main]
+    tags: ["host-v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: test -z "$(gofmt -l .)"
+      - name: go vet
+        run: go vet ./...
+      - uses: golangci/golangci-lint-action@v9.3.0
+        with:
+          version: v2.14.0
+      - name: go test
+        run: go test ./... -race -count=1
+      - name: install script tests
+        run: sh scripts/install_test.sh
+      - name: shellcheck
+        run: shellcheck scripts/*.sh
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/host-v')
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: Check that the tag, the code and the installer agree on the version
+        id: version
+        run: |
+          version="${GITHUB_REF_NAME#host-v}"
+          in_code="$(sed -n 's/^var Version = "\(.*\)"$/\1/p' internal/hostversion/version.go)"
+          in_installer="$(sed -n 's/^DEFAULT_VERSION="\(.*\)"$/\1/p' scripts/install.sh)"
+          if [ "$version" != "$in_code" ] || [ "$version" != "$in_installer" ]; then
+            echo "tag says $version, internal/hostversion says $in_code, scripts/install.sh says $in_installer" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Build
+        run: sh scripts/build-host.sh "${{ steps.version.outputs.version }}"
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4.2.2
+        with:
+          subject-path: |
+            dist/cronbeat_*.tar.gz
+            dist/SHA256SUMS
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          cat > release-notes.md <<NOTES
+          cronbeat host CLI ${VERSION} for Linux (amd64 and arm64).
+
+          Install: \`curl -fsSL https://docs.cronbeat.dev/install.sh | sh\`
+
+          Verify a download: \`sha256sum -c SHA256SUMS --ignore-missing\` and
+          \`gh attestation verify cronbeat_${VERSION}_linux_amd64.tar.gz --repo ${GITHUB_REPOSITORY}\`
+          NOTES
+          gh release create "${GITHUB_REF_NAME}" dist/cronbeat_*.tar.gz dist/SHA256SUMS \
+            --title "cronbeat host ${VERSION}" \
+            --notes-file release-notes.md \
+            --verify-tag

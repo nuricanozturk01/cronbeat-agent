@@ -1,0 +1,11 @@
+apiVersion: v2
+name: cronbeat-agent
+description: CronBeat Kubernetes agent. Watches CronJobs, Jobs and Pods (read-only) and reports job runs and failures to CronBeat.
+type: application
+version: 0.4.0
+appVersion: "0.4.0"
+kubeVersion: ">=1.27.0-0"
+keywords:
+  - cronbeat
+  - cronjob
+  - monitoring

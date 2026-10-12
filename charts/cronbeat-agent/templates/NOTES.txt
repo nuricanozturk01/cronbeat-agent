@@ -1,0 +1,13 @@
+CronBeat agent {{ .Chart.AppVersion }} installed as "{{ include "cronbeat-agent.fullname" . }}" in namespace {{ .Release.Namespace }}.
+
+Cluster name : {{ .Values.clusterName }}
+Watching     : {{ if .Values.watchNamespaces }}{{ join ", " .Values.watchNamespaces }}{{ else }}all namespaces{{ end }}
+API key from : Secret {{ include "cronbeat-agent.secretName" . }} (key {{ include "cronbeat-agent.secretKey" . }})
+
+The agent only makes outbound HTTPS calls to {{ .Values.apiUrl }}. It listens on port {{ .Values.healthPort }}
+for the liveness and readiness probes only (no Service is created).
+It has read-only access (list/watch) to cronjobs, jobs and pods{{ if .Values.watchNamespaces }}, limited to the watched namespaces{{ end }}.
+
+Check that it runs:
+  kubectl -n {{ .Release.Namespace }} rollout status deploy/{{ include "cronbeat-agent.fullname" . }}
+  kubectl -n {{ .Release.Namespace }} logs deploy/{{ include "cronbeat-agent.fullname" . }}

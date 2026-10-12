@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cronbeat-agent.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "cronbeat-agent.labels" . | nindent 4 }}
+spec:
+  # One replica on purpose: events are idempotent per jobUid, no leader election.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "cronbeat-agent.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- if and .Values.apiKey (not .Values.existingSecret) }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "cronbeat-agent.selectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "cronbeat-agent.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: agent
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: CRONBEAT_API_URL
+              value: {{ .Values.apiUrl | quote }}
+            - name: CLUSTER_NAME
+              value: {{ required "clusterName is required" .Values.clusterName | quote }}
+            - name: WATCH_NAMESPACES
+              value: {{ join "," .Values.watchNamespaces | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.logLevel | quote }}
+            - name: HEALTH_ADDR
+              value: ":{{ .Values.healthPort }}"
+            - name: GOMEMLIMIT
+              value: {{ .Values.goMemLimit | quote }}
+            - name: GOMAXPROCS
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.cpu
+            - name: CRONBEAT_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cronbeat-agent.secretName" . }}
+                  key: {{ include "cronbeat-agent.secretKey" . }}
+          ports:
+            - name: health
+              containerPort: {{ .Values.healthPort }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            periodSeconds: 60
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+            periodSeconds: 15
+            timeoutSeconds: 3
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
