@@ -28,7 +28,7 @@ func newHealth(maxSilence time.Duration) (*Health, *clock) {
 func get(t *testing.T, h http.Handler, method, path string) int {
 	t.Helper()
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(method, path, nil))
+	h.ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), method, path, nil))
 	return rec.Code
 }
 
@@ -89,7 +89,7 @@ func TestTheProbeAnswersCarryNoInformation(t *testing.T) {
 	h, _ := newHealth(time.Minute)
 	rec := httptest.NewRecorder()
 
-	h.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
+	h.Handler().ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/healthz", nil))
 
 	if body, _ := io.ReadAll(rec.Body); string(body) != "ok\n" {
 		t.Fatalf("body = %q", body)
@@ -98,7 +98,7 @@ func TestTheProbeAnswersCarryNoInformation(t *testing.T) {
 
 func TestServeAnswersAndStopsWithTheContext(t *testing.T) {
 	h, _ := newHealth(time.Minute)
-	lis, err := net.Listen("tcp", "127.0.0.1:0")
+	lis, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,11 @@ func TestServeAnswersAndStopsWithTheContext(t *testing.T) {
 	done := make(chan error, 1)
 	go func() { done <- Serve(ctx, lis, h.Handler()) }()
 
-	resp, err := http.Get("http://" + lis.Addr().String() + "/healthz")
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://"+lis.Addr().String()+"/healthz", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}

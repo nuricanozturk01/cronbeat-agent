@@ -239,8 +239,8 @@ func TestTheHTTPClientKeepsFewIdleConnectionsAndDoesNotFollowRedirects(t *testin
 	if c.Timeout != 15*time.Second {
 		t.Fatalf("timeout = %s", c.Timeout)
 	}
-	req, _ := http.NewRequest(http.MethodGet, "http://x.test", nil)
-	if err := c.CheckRedirect(req, nil); err != http.ErrUseLastResponse {
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "http://x.test", nil)
+	if err := c.CheckRedirect(req, nil); !errors.Is(err, http.ErrUseLastResponse) {
 		t.Fatalf("redirects must not be followed, got %v", err)
 	}
 }

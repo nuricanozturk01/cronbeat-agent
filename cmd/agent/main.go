@@ -53,7 +53,7 @@ func run() error {
 
 	probes := health.New(health.DefaultMaxSilence)
 	if cfg.HealthAddr != "" {
-		lis, err := net.Listen("tcp", cfg.HealthAddr)
+		lis, err := (&net.ListenConfig{}).Listen(ctx, "tcp", cfg.HealthAddr)
 		if err != nil {
 			return fmt.Errorf("health listener: %w", err)
 		}

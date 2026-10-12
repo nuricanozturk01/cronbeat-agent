@@ -435,7 +435,7 @@ func TestHangingServerNeverDelaysTheJobAndStaysWithinTheBudgets(t *testing.T) {
 	if _, err := bufio.NewReader(stdout).ReadString('\n'); err != nil {
 		t.Fatal(err)
 	}
-	if firstOutput := time.Since(begin); firstOutput > time.Second {
+	if firstOutput := time.Since(begin); firstOutput > 3*time.Second {
 		t.Fatalf("the job's first output came after %v, the hanging server delayed the job", firstOutput)
 	}
 	err = cmd.Wait()

@@ -302,7 +302,7 @@ func TestTheAgentIsReadyOnceItsCachesSyncedAndStopsCleanly(t *testing.T) {
 
 	eventually(t, "ready", func() bool {
 		rec := httptest.NewRecorder()
-		r.health.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/readyz", nil))
+		r.health.Handler().ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/readyz", nil))
 		return rec.Code == http.StatusOK
 	})
 	eventually(t, "heartbeat", func() bool {
